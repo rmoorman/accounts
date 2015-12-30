@@ -1,0 +1,4 @@
+[submodule "vendor/src/github.com/coreos/dex"]
+	path = vendor/src/github.com/coreos/dex
+	url = https://github.com/sercand/dex.git
+	branch = multiple_storage

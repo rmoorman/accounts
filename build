@@ -1,0 +1,10 @@
+#!/bin/bash -e
+
+export GOPATH=${PWD}/vendor:${PWD}/vendor/src/github.com/coreos/dex/Godeps/_workspace:${PWD}
+export GOBIN=${PWD}/bin
+
+LD_FLAGS="-X main.version=$(./git-version)"
+go build -o bin/dex-worker -ldflags="$LD_FLAGS" otsimo/dex-worker
+go build -o bin/dexctl -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dexctl
+go build -o bin/dex-overlord -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dex-overlord
+
