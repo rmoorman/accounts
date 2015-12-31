@@ -1,0 +1,35 @@
+[
+	{
+		"type": "local",
+		"id": "local",
+		"passwordInfos": [
+			{
+				"userId":"elroy-id",
+				"passwordPlaintext": "bones"
+			},
+			{
+				"userId":"penny",
+				"passwordPlaintext": "kibble"
+			}
+		]
+	},
+	{
+		"type": "oidc",
+		"id": "google",
+		"issuerURL": "https://accounts.google.com",
+		"clientID": "${CLIENT_ID}",
+		"clientSecret": "${CLIENT_SECRET}"
+	},
+	{
+		"type": "github",
+		"id": "github",
+		"clientID": "${CLIENT_ID}",
+		"clientSecret": "${CLIENT_SECRET}"
+	},
+	{
+		"type": "bitbucket",
+		"id": "bitbucket",
+		"clientID": "${CLIENT_ID}",
+		"clientSecret": "${CLIENT_SECRET}"
+	}
+]

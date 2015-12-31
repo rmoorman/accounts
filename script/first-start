@@ -1,0 +1,49 @@
+
+source script/env.txt
+
+# Start the overlord
+./bin/dex-overlord-darwin-amd64 --db $DEX_DB --admin-listen http://127.0.0.1:18850 &
+echo "Waiting for overlord to start..."
+until $(curl --output /dev/null --silent --fail http://localhost:18850/health); do
+    printf '.'
+    sleep 1
+done
+
+# Create a client
+eval "$(./bin/dexctl-darwin-amd64 --db postgresql --db-url=$DEX_DB_URL new-client http://127.0.0.1:18856/callback)"
+
+# Set up connectors
+DEX_CONNECTORS_FILE=$(mktemp  /tmp/dex-conn.XXXXX)
+cat << EOF > $DEX_CONNECTORS_FILE
+[
+	{
+		"type": "local",
+		"id": "local"
+	}
+]
+EOF
+
+./bin/dexctl-darwin-amd64 --db postgresql --db-url=$DEX_DB_URL set-connector-configs $DEX_CONNECTORS_FILE
+
+
+# Start the worker
+./bin/dex-worker-darwin-amd64 --db postgresql --enable-registration --listen http://0.0.0.0:18848 --grpc 0.0.0.0:18849 &
+echo "Waiting for worker to start..."
+until $(curl --output /dev/null --silent --fail http://localhost:18848/health); do
+    printf '.'
+    sleep 1
+done
+
+rm -rf accounts_client.txt
+touch accounts_client.txt
+cat << EOF > accounts_client.txt
+export DEX_APP_CLIENT_ID=$DEX_APP_CLIENT_ID
+export DEX_APP_CLIENT_SECRET=$DEX_APP_CLIENT_SECRET
+EOF
+
+# Start the app
+./bin/accounts-darwin-amd64 --client-id=$DEX_APP_CLIENT_ID --client-secret=$DEX_APP_CLIENT_SECRET --discovery=http://127.0.0.1:18848 --listen http://0.0.0.0:18856 --dex 127.0.0.1:18849 &
+
+# Create Admin User - the password is a hash of the word "password"
+curl -X POST --data '{"email":"admin@example.com","password":"$2a$04$J54iz31fhYfXIRVglUMmpufY6TKf/vvwc9pv8zWog7X/LFrFfkNQe" }' --header "Authorization: $DEX_OVERLORD_ADMIN_API_SECRET" http://127.0.0.1:18850/api/v1/admin
+

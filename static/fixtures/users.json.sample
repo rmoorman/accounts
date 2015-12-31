@@ -1,0 +1,15 @@
+[
+    {
+        "user":{
+            "id": "elroy-id",
+            "email": "elroy77@example.com",
+            "displayName": "Elroy Jonez"
+        },
+        "remoteIdentities": [
+            {
+                "connectorId": "local",
+                "id": "elroy-id"
+            }
+        ]
+    }
+]

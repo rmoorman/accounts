@@ -1,0 +1,45 @@
+#!/bin/bash -e
+#
+# Run all tests (not including functional)
+#   ./test
+#   ./test -v
+#
+# Run tests for one package
+#   PKG=./unit ./test
+#   PKG=ssh ./test
+#
+
+# Invoke ./cover for HTML output
+COVER=${COVER:-"-cover"}
+GOPATH=$PWD:$PWD/vendor
+source ./script/build
+
+TESTABLE="connector integration pkg/crypto pkg/flag pkg/http pkg/net pkg/time pkg/html server session user user/api email"
+FORMATTABLE="$TESTABLE cmd/dexctl cmd/dex-worker cmd/dex-overlord examples/app functional pkg/log"
+
+# user has not provided PKG override
+if [ -z "$PKG" ]; then
+	TEST=$TESTABLE
+
+# user has provided PKG override
+else
+	# strip out slashes and dots from PKG=./foo/
+	TEST=${PKG//\//}
+	TEST=${TEST//./}
+fi
+
+# split TEST into an array and prepend repo path to each local package
+split=(${TEST// / })
+TEST=${split[@]/#/github.com/coreos/dex/}
+
+echo "Running tests..."
+go test ${COVER} $@ ${TEST}
+
+echo "Checking govet..."
+vetRes=$(go vet $TEST)
+if [ -n "${vetRes}" ]; then
+	echo -e "govet checking failed:\n${vetRes}"
+	exit 255
+fi
+
+echo "Success"

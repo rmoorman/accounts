@@ -1,0 +1,4 @@
+#!/bin/bash
+
+rm -f ./vendor/src/github.com/coreos/dex/email/raw.go
+cp ./patch/raw.go ./vendor/src/github.com/coreos/dex/email/raw.go

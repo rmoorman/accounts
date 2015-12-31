@@ -1,0 +1,36 @@
+syntax = "proto3";
+package accountspb;
+
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+
+message Token{
+    string access_token = 1;
+    string token_type = 2;
+    string refresh_token = 3;   
+}
+
+message LoginRequest{
+    string basic_auth = 1;
+    string grant_type = 2;
+}
+
+message RegisterRequest{
+    string email = 1;
+    string display_name = 2;
+    string password = 3;
+}
+
+message RegisterResponse{
+    string user_id = 1;
+    Token token = 2 ;
+}
+
+service DexService {
+    rpc Login(LoginRequest) returns (Token){}
+    rpc Register(RegisterRequest) returns (RegisterResponse){}
+}

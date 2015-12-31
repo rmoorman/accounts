@@ -1,0 +1,5 @@
+#!/bin/bash
+
+mkdir -p ./src/accountspb
+
+protoc --proto_path=$GOPATH/src/github.com/gogo/protobuf/:./proto --gofast_out=plugins=grpc:./src/accountspb/ ./proto/accounts.proto

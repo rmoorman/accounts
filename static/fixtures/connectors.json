@@ -1,0 +1,16 @@
+[
+	{
+		"type": "local",
+		"id": "local",
+		"passwordInfos": [
+			{
+				"userId":"elroy-id",
+				"passwordPlaintext": "bones"
+			},
+			{
+				"userId":"penny",
+				"passwordPlaintext": "kibble"
+			}
+		]
+	}
+]
