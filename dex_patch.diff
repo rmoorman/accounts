@@ -1,0 +1,77 @@
+diff --git a/server/config.go b/server/config.go
+index 95058c3..01e9be4 100644
+--- a/server/config.go
++++ b/server/config.go
+@@ -202,7 +202,7 @@ func setEmailer(srv *Server, issuerName, fromAddress, emailerConfigFile string,
+ 			return err
+ 		}
+ 	}
+-	tMailer := email.NewTemplatizedEmailerFromTemplates(textTemplates, htmlTemplates, emailer)
++	tMailer := email.NewRawEmailerFromTemplates(textTemplates, htmlTemplates, emailer)
+ 	tMailer.SetGlobalContext(map[string]interface{}{
+ 		"issuer_name": issuerName,
+ 	})
+diff --git a/user/email/email.go b/user/email/email.go
+index f9c5a6f..6c00754 100644
+--- a/user/email/email.go
++++ b/user/email/email.go
+@@ -18,7 +18,7 @@ type UserEmailer struct {
+ 	signerFn            signerFunc
+ 	tokenValidityWindow time.Duration
+ 	issuerURL           url.URL
+-	emailer             *email.TemplatizedEmailer
++	emailer             email.EmailSender
+ 	fromAddress         string
+ 
+ 	passwordResetURL url.URL
+@@ -32,7 +32,7 @@ func NewUserEmailer(ur user.UserRepo,
+ 	signerFn signerFunc,
+ 	tokenValidityWindow time.Duration,
+ 	issuerURL url.URL,
+-	emailer *email.TemplatizedEmailer,
++	emailer email.EmailSender,
+ 	fromAddress string,
+ 	passwordResetURL url.URL,
+ 	verifyEmailURL url.URL,
+@@ -200,12 +200,11 @@ func (u *UserEmailer) SendEmailVerification(userID, clientID string, redirectURL
+ 			log.Errorf("error sending email verification email %v: ", err)
+ 		}
+ 		return nil, err
+-
+ 	}
+ 	return &verifyURL, nil
+ }
+ 
+-func (u *UserEmailer) SetEmailer(emailer *email.TemplatizedEmailer) {
++func (u *UserEmailer) SetEmailer(emailer email.EmailSender) {
+ 	u.emailer = emailer
+ }
+ 
+diff --git a/user/user.go b/user/user.go
+index a1b05de..1fd28fc 100644
+--- a/user/user.go
++++ b/user/user.go
+@@ -12,13 +12,13 @@ import (
+ 	"os"
+ 	"sort"
+ 
+-	"code.google.com/p/go-uuid/uuid"
+ 	"github.com/jonboulle/clockwork"
+ 
+ 	"github.com/coreos/dex/repo"
+ 	"github.com/coreos/go-oidc/jose"
+ 	"github.com/coreos/go-oidc/key"
+ 	"github.com/coreos/go-oidc/oidc"
++	"gopkg.in/mgo.v2/bson"
+ )
+ 
+ const (
+@@ -67,7 +67,7 @@ func assertURLClaim(claims jose.Claims, k string) *url.URL {
+ type UserIDGenerator func() (string, error)
+ 
+ func DefaultUserIDGenerator() (string, error) {
+-	return uuid.New(), nil
++	return bson.NewObjectId().Hex(), nil
+ }
+ 
+ type User struct {

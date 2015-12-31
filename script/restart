@@ -1,6 +1,11 @@
 
 source script/env.txt
 
+kill -KILL $(ps aux | grep ./bin/dex-worker | grep -v grep | awk '{print $2}')
+kill -KILL $(ps aux | grep ./bin/dex-overlord | grep -v grep | awk '{print $2}')
+kill -KILL $(ps aux | grep ./bin/accounts | grep -v grep | awk '{print $2}')
+
+
 # Start the overlord
 ./bin/dex-overlord-darwin-amd64 --db $DEX_DB --admin-listen http://127.0.0.1:18850 &
 echo "Waiting for overlord to start..."

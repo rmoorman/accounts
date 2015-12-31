@@ -34,7 +34,7 @@ func handleResendFunc(o *OtsimoAccounts, issuerURL, resendURL, cbURL url.URL) ht
 		qBytes, err := json.Marshal(&q)
 		res, err := hc.Post(resendURL.String(), "application/json", bytes.NewReader(qBytes))
 		if err != nil {
-			log.Errorf("error requesting email resend:", err)
+			log.Errorf("error requesting email resend: %v", err)
 			writeError(w, http.StatusInternalServerError, "error requesting email resend")
 			return
 		}
