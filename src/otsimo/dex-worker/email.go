@@ -5,6 +5,11 @@ import (
 
 	"github.com/coreos/dex/email"
 	"github.com/coreos/dex/pkg/log"
+	"errors"
+	pb "github.com/otsimo/simple-notifications/notificationpb"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -18,9 +23,9 @@ func init() {
 }
 
 type OtsimoEmailerConfig struct {
-	PrivateAPIKey string `json:"privateAPIKey"`
-	PublicAPIKey  string `json:"publicAPIKey"`
-	Domain        string `json:"domain"`
+	GrpcUrl string  `json:"grpcUrl"`
+	UseTls  bool    `json:"useTls"`
+	CaCert  string  `json:"caCert"`
 }
 
 func (cfg OtsimoEmailerConfig) EmailerType() string {
@@ -32,8 +37,23 @@ func (cfg OtsimoEmailerConfig) EmailerID() string {
 }
 
 func (cfg OtsimoEmailerConfig) Emailer() (email.Emailer, error) {
-	//todo set grpc connection
-	return &otsimoEmailer{}, nil
+	var opts []grpc.DialOption
+	if cfg.UseTls {
+		auth, err := credentials.NewClientTLSFromFile(cfg.CaCert, "")
+		if err != nil {
+			panic(err)
+		}else {
+			opts = append(opts, grpc.WithTransportCredentials(auth))
+		}
+	} else {
+		opts = append(opts, grpc.WithInsecure())
+	}
+	conn, err := grpc.Dial(cfg.GrpcUrl, opts...)
+	if err != nil {
+		log.Fatalf("email.go: Error while connection to notification service %v\n", err)
+	}
+	client := pb.NewNotificationServiceClient(conn)
+	return &otsimoEmailer{client:client}, nil
 }
 
 // otsimoEmailerConfig exists to avoid recusion.
@@ -45,36 +65,32 @@ func (cfg *OtsimoEmailerConfig) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	/*
-		if mgtmp.PrivateAPIKey == "" {
-			return errors.New("must have a privateAPIKey set")
-		}
+	if mgtmp.GrpcUrl == "" {
+		return errors.New("must have a grpcUrl set")
+	}
 
-		if mgtmp.PublicAPIKey == "" {
-			return errors.New("must have a publicAPIKey set")
-		}
-
-		if mgtmp.Domain == "" {
-			return errors.New("must have a domain set")
-		}
-	*/
 	*cfg = OtsimoEmailerConfig(mgtmp)
 	return nil
 }
 
 type otsimoEmailer struct {
+	client pb.NotificationServiceClient
 }
 
 func (m *otsimoEmailer) SendMail(from, subject, event, data string, to ...string) error {
-	/*msg := m.mg.NewMessage(from, subject, text, to...)
-	  if html != "" {
-	  	msg.SetHtml(html)
-	  }
-	  mes, id, err := m.mg.Send(msg)
-	  if err != nil {
-	  	counterEmailSendErr.Add(1)
-	  	return err
-	  }*/
-	log.Infof("SendMail: msgID: %v: %q %s %s", from, subject, event, data)
-	return nil
+	email := &pb.Email{
+		FromEmail:from,
+		Subject:subject,
+		DataJson:data,
+		ToEmail:to,
+	}
+	mes := &pb.Message{
+		Event:event,
+		Targets:pb.NewTargets(pb.NewEmailTarget(email)),
+	}
+	_, err := m.client.SendMessage(context.Background(), mes)
+	if err != nil {
+		log.Errorf("email.go: sending email error: %v", err)
+	}
+	return err
 }

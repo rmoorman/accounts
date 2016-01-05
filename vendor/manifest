@@ -2,6 +2,19 @@
 	"version": 0,
 	"dependencies": [
 		{
+			"importpath": "github.com/codegangsta/negroni",
+			"repository": "https://github.com/codegangsta/negroni",
+			"revision": "c7477ad8e330bef55bf1ebe300cf8aa67c492d1b",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/gogo/protobuf/sortkeys",
+			"repository": "https://github.com/gogo/protobuf",
+			"revision": "b25331f05786694d634d632a8043fef600a84e62",
+			"branch": "master",
+			"path": "/sortkeys"
+		},
+		{
 			"importpath": "github.com/golang/glog",
 			"repository": "https://github.com/golang/glog",
 			"revision": "fca8c8854093a154ff1eb580aae10276ad6b1b5f",
@@ -20,6 +33,20 @@
 			"revision": "68415e7123da32b07eab49c96d2c4d6158360e9b",
 			"branch": "master",
 			"path": "/proto/testdata"
+		},
+		{
+			"importpath": "github.com/otsimo/api/apipb",
+			"repository": "https://github.com/otsimo/api",
+			"revision": "bc601bb41fe6c2c71d067dc76818dcc16e383022",
+			"branch": "master",
+			"path": "/apipb"
+		},
+		{
+			"importpath": "github.com/otsimo/simple-notifications/notificationpb",
+			"repository": "https://github.com/otsimo/simple-notifications",
+			"revision": "1ac836c6539fe848151ef6ec7b4975229f087f70",
+			"branch": "master",
+			"path": "/notificationpb"
 		},
 		{
 			"importpath": "golang.org/x/net/context",

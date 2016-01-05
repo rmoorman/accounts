@@ -6,9 +6,7 @@ import (
 	"net"
 	"strings"
 	"time"
-
 	"fmt"
-
 	"github.com/coreos/dex/connector"
 	"github.com/coreos/dex/pkg/log"
 	"github.com/coreos/dex/server"
@@ -22,6 +20,11 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"errors"
+	"github.com/coreos/dex/user"
+	"math/rand"
+	"google.golang.org/grpc/grpclog"
+	"os"
+	golog "log"
 )
 
 type grpcServer struct {
@@ -61,7 +64,7 @@ func getJWTToken(ctx context.Context) (jose.JWT, error) {
 		return jose.JWT{}, fmt.Errorf("missing metadata")
 	}
 	var auth []string
-	auth, ok = md["authorization"]
+	auth, ok = md["Authorization"]
 	if !ok || len(auth) == 0 {
 		return jose.JWT{}, fmt.Errorf("missing authorization header")
 	}
@@ -79,53 +82,64 @@ func getJWTToken(ctx context.Context) (jose.JWT, error) {
 	return jose.ParseJWT(val)
 }
 
-func (s *grpcServer) authToken(jwt jose.JWT) (string, error) {
+func (s *grpcServer) authToken(jwt jose.JWT) (string, *oidc.ClientMetadata, error) {
 	ciRepo := s.server.ClientIdentityRepo
 	keys, err := s.server.KeyManager.PublicKeys()
 	if err != nil {
-		log.Errorf("Failed to get keys: %v", err)
-		return "", errors.New("errorAccessDenied")
+		log.Errorf("grpc.go: Failed to get keys: %v", err)
+		return "", nil, errors.New("errorAccessDenied")
 	}
 	if len(keys) == 0 {
-		log.Error("No keys available for verification client")
-		return "", errors.New("errorAccessDenied")
+		log.Error("grpc.go: No keys available for verification client")
+		return "", nil, errors.New("errorAccessDenied")
 	}
 
 	ok, err := oidc.VerifySignature(jwt, keys)
 	if err != nil {
-		log.Errorf("Failed to verify signature: %v", err)
-		return "", err
+		log.Errorf("grpc.go: Failed to verify signature: %v", err)
+		return "", nil, err
 	}
 	if !ok {
-		log.Info("Invalid token")
-		return "", errors.New("invalid token")
+		log.Info("grpc.go: token signature is not verified")
+		return "", nil, errors.New("invalid token")
 	}
 
 	clientID, err := oidc.VerifyClientClaims(jwt, s.server.IssuerURL.String())
 	if err != nil {
-		log.Errorf("Failed to verify JWT claims: %v", err)
-		return "", errors.New("failed to verify jwt claims token")
+		log.Errorf("grpc.go: Failed to verify JWT claims: %v", err)
+		return "", nil, errors.New("failed to verify jwt claims token")
 	}
 
 	md, err := ciRepo.Metadata(clientID)
 	if md == nil || err != nil {
-		log.Errorf("Failed to find clientID: %s, error=%v", clientID, err)
-		return "", err
+		log.Errorf("grpc.go: Failed to find clientID: %s, error=%v", clientID, err)
+		return "", nil, err
 	}
-	log.Debugf("Authenticated token for client ID %s", clientID)
-	return clientID, nil
+	//client must be admin in order to use login and register grpc apis.
+	ok, err = ciRepo.IsDexAdmin(clientID)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if !ok {
+		log.Infof("grpc.go: Client [%s] is not admin", clientID)
+		return "", nil, errors.New("errorAccessDenied")
+	}
+
+	log.Debugf("grpc.go: Authenticated token for client ID %s", clientID)
+	return clientID, md, nil
 }
 
 func (s *grpcServer) Token(userID, clientID string, iat, exp time.Time) (*jose.JWT, string, error) {
 	signer, err := s.server.KeyManager.Signer()
 	if err != nil {
-		log.Errorf("Failed to generate ID token: %v", err)
+		log.Errorf("grpc.go: Failed to generate ID token: %v", err)
 		return nil, "", oauth2.NewError(oauth2.ErrorServerError)
 	}
 
 	user, err := s.server.UserRepo.Get(nil, userID)
 	if err != nil {
-		log.Errorf("Failed to fetch user %q from repo: %v: ", userID, err)
+		log.Errorf("grpc.go: Failed to fetch user %q from repo: %v: ", userID, err)
 		return nil, "", oauth2.NewError(oauth2.ErrorServerError)
 	}
 	claims := oidc.NewClaims(s.server.IssuerURL.String(), userID, clientID, iat, exp)
@@ -133,13 +147,13 @@ func (s *grpcServer) Token(userID, clientID string, iat, exp time.Time) (*jose.J
 
 	jwt, err := jose.NewSignedJWT(claims, signer)
 	if err != nil {
-		log.Errorf("Failed to generate ID token: %v", err)
+		log.Errorf("grpc.go: Failed to generate ID token: %v", err)
 		return nil, "", oauth2.NewError(oauth2.ErrorServerError)
 	}
 
 	refreshToken, err := s.server.RefreshTokenRepo.Create(user.ID, clientID)
 	if err != nil {
-		log.Errorf("Failed to generate refresh token: %v", err)
+		log.Errorf("grpc.go: Failed to generate refresh token: %v", err)
 		return nil, "", oauth2.NewError(oauth2.ErrorServerError)
 	}
 
@@ -152,7 +166,7 @@ func (g *grpcServer) Login(ctx context.Context, in *pb.LoginRequest) (*pb.Token,
 		log.Errorf("grpc.go: getJWTToken error %v", err)
 		return nil, err
 	}
-	clientId, err := g.authToken(jwtClient)
+	clientId, _, err := g.authToken(jwtClient)
 	if err != nil {
 		log.Errorf("grpc.go: authToken failed error=%v", err)
 		return nil, err
@@ -175,7 +189,7 @@ func (g *grpcServer) Login(ctx context.Context, in *pb.LoginRequest) (*pb.Token,
 		return nil, err
 	}
 
-	log.Infof("token sent: userID=%s email:%s", i.ID, email)
+	log.Infof("grpc.go: token sent: userID=%s email:%s", i.ID, email)
 
 	return &pb.Token{
 		AccessToken:  jwt.Encode(),
@@ -190,7 +204,7 @@ func (g *grpcServer) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.
 		log.Errorf("grpc.go: getJWTToken error %v", err)
 		return nil, err
 	}
-	clientId, err := g.authToken(jwtClient)
+	clientId, md, err := g.authToken(jwtClient)
 	if err != nil {
 		log.Errorf("grpc.go: authToken failed error=%v", err)
 		return nil, err
@@ -202,7 +216,7 @@ func (g *grpcServer) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.
 	}
 
 	//send email
-	//g.server.UserEmailer.SendEmailVerification(id,clientId,nil)
+	g.server.UserEmailer.SendEmailVerification(id, clientId, md.RedirectURLs[0])
 
 	now := time.Now()
 	jwt, rt, err := g.Token(id, clientId, now, now.Add(session.DefaultSessionValidityWindow))
@@ -211,7 +225,7 @@ func (g *grpcServer) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.
 		return nil, err
 	}
 
-	log.Infof("token sent: userID=%s email:%s", id, in.Email)
+	log.Infof("grpc.go: token sent: userID=%s email:%s", id, in.Email)
 
 	return &pb.RegisterResponse{
 		UserId: id,
@@ -223,12 +237,44 @@ func (g *grpcServer) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.
 	}, nil
 }
 
+func (g *grpcServer) RemoveUser(ctx context.Context, in *pb.RemoveRequest) (*pb.RemoveResponse, error) {
+	jwtClient, err := getJWTToken(ctx)
+	if err != nil {
+		log.Errorf("grpc.go: getJWTToken error %v", err)
+		return nil, err
+	}
+	_, _, err = g.authToken(jwtClient)
+	if err != nil {
+		log.Errorf("grpc.go: authToken failed error=%v", err)
+		return nil, err
+	}
+
+	usr, err := g.server.UserManager.Get(in.Id)
+	if err != nil {
+		log.Errorf("grpc.go: failed to get user %+v", err)
+		return nil, err
+	}
+	if usr.Email == in.Email {
+		return nil, errors.New("given email is different than old one")
+	}
+	err = g.server.UserRepo.Update(nil, user.User{
+		ID: in.Id,
+		Email: fmt.Sprintf("$$%s$%s", randStringBytesRmndr(4), in.Email),
+		Disabled: false,
+	})
+	if err != nil {
+		log.Errorf("grpc.go: failed to update-remove user %+v", err)
+		return nil, err
+	}
+	return &pb.RemoveResponse{Type:0}, nil
+}
+
 func ServeGrpc(cfg *server.ServerConfig, srv *server.Server, grpcUrl string, certFile, keyFile string) {
 	var opts []grpc.ServerOption
 	if certFile != "" && keyFile != "" {
 		creds, err := credentials.NewServerTLSFromFile(certFile, keyFile)
 		if err != nil {
-			log.Fatalf("Failed to generate credentials %v", err)
+			log.Fatalf("grpc.go: Failed to generate credentials %v", err)
 		}
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
@@ -249,12 +295,23 @@ func ServeGrpc(cfg *server.ServerConfig, srv *server.Server, grpcUrl string, cer
 		}
 	}
 
+	grpclog.SetLogger(golog.New(os.Stdout, "", 0))
 	pb.RegisterDexServiceServer(s, rpcSrv)
 
 	lis, err := net.Listen("tcp", grpcUrl)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("grpc.go: failed to listen: %v", err)
 	}
 	log.Infof("grpc: Grpc server starting on %s", grpcUrl)
 	s.Serve(lis)
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func randStringBytesRmndr(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Int63() % int64(len(letterBytes))]
+	}
+	return string(b)
 }

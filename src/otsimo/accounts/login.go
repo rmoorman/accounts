@@ -1,14 +1,13 @@
 package main
 
 import (
+	pb "accountspb"
+	"encoding/base64"
 	"net/http"
 	"net/url"
 
-	pb "accountspb"
-	"encoding/base64"
-
-	"golang.org/x/net/context"
 	"github.com/coreos/dex/pkg/log"
+	"golang.org/x/net/context"
 )
 
 func basicAuth(username, password string) string {
@@ -32,7 +31,7 @@ func handleLoginFunc(o *OtsimoAccounts) http.HandlerFunc {
 			GrantType: grant_type,
 			BasicAuth: "Basic " + basicAuth(username, password),
 		})
-		log.Infof("login result of '%s' is %q %v", username, resp, err)
+		log.Infof("login.go: login result of '%s' is %q %v", username, resp, err)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -42,11 +41,13 @@ func handleLoginFunc(o *OtsimoAccounts) http.HandlerFunc {
 	handleGET := func(w http.ResponseWriter, r *http.Request) {
 		oac, err := o.Oidc.OAuthClient()
 		if err != nil {
-			panic("unable to proceed")
+			writeError(w, http.StatusInternalServerError, "unabled create oauth client")
+			return
 		}
 		u, err := url.Parse(oac.AuthCodeURL("", "", ""))
 		if err != nil {
-			panic("unable to proceed")
+			writeError(w, http.StatusInternalServerError, "unabled create auth code url")
+			return
 		}
 		http.Redirect(w, r, u.String(), http.StatusFound)
 	}

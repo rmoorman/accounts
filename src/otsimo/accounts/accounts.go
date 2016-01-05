@@ -3,13 +3,13 @@ package main
 import (
 	pb "accountspb"
 	"crypto/x509"
-
 	"encoding/json"
 	"net/http"
 
 	"github.com/coreos/dex/pkg/log"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oidc"
+	"github.com/otsimo/api/apipb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -17,16 +17,18 @@ import (
 
 type OtsimoAccounts struct {
 	Dex         pb.DexServiceClient
+	Api         apipb.ApiServiceClient
 	Oidc        *oidc.Client
 	Credentials oidc.ClientCredentials
 	roots       *x509.CertPool
 }
 
-func (c *OtsimoAccounts) ConnectToDexService(url string) {
+func (c *OtsimoAccounts) ConnectToServices(dexServiceUrl, apiServiceUrl string) {
 	jwt, err := c.Oidc.ClientCredsToken(oidc.DefaultScope)
 	if err != nil {
 		panic(err)
 	}
+
 	jwtCreds := NewOauthAccess(&jwt)
 	var opts []grpc.DialOption
 	if c.roots != nil {
@@ -36,11 +38,17 @@ func (c *OtsimoAccounts) ConnectToDexService(url string) {
 		opts = append(opts, grpc.WithInsecure())
 	}
 	opts = append(opts, grpc.WithPerRPCCredentials(&jwtCreds))
-	conn, err := grpc.Dial(url, opts...)
+	conn, err := grpc.Dial(dexServiceUrl, opts...)
 	if err != nil {
 		log.Fatalf("Error while connection to dex service %v\n", err)
 	}
 	c.Dex = pb.NewDexServiceClient(conn)
+
+	apiConn, err := grpc.Dial(apiServiceUrl, opts...)
+	if err != nil {
+		log.Fatalf("Error while connection to api service %v\n", err)
+	}
+	c.Api = apipb.NewApiServiceClient(apiConn)
 }
 
 func NewOtsimoAccounts(client *oidc.Client, cc oidc.ClientCredentials, roots *x509.CertPool) *OtsimoAccounts {
@@ -65,7 +73,7 @@ func NewOauthAccess(token *jose.JWT) oauthAccess {
 
 func (oa *oauthAccess) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
 	return map[string]string{
-		"authorization": "Bearer" + " " + oa.Token.Encode(),
+		"Authorization": "Bearer" + " " + oa.Token.Encode(),
 	}, nil
 }
 

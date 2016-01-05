@@ -30,7 +30,17 @@ message RegisterResponse{
     Token token = 2 ;
 }
 
+message RemoveRequest{
+    string id = 1;
+    string email = 2;
+}
+
+message RemoveResponse{
+    int32 type = 1;
+}
+
 service DexService {
     rpc Login(LoginRequest) returns (Token){}
     rpc Register(RegisterRequest) returns (RegisterResponse){}
+    rpc RemoveUser(RemoveRequest) returns(RemoveResponse){}
 }
