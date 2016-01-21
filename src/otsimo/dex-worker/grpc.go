@@ -3,14 +3,21 @@ package main
 import (
 	pb "accountspb"
 	"encoding/base64"
+	"errors"
+	"fmt"
+	golog "log"
+	"math/rand"
 	"net"
+	"net/url"
+	"os"
 	"strings"
 	"time"
-	"fmt"
+
 	"github.com/coreos/dex/connector"
 	"github.com/coreos/dex/pkg/log"
 	"github.com/coreos/dex/server"
 	"github.com/coreos/dex/session"
+	"github.com/coreos/dex/user"
 	"github.com/coreos/dex/user/manager"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/oauth2"
@@ -18,19 +25,18 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/metadata"
-	"errors"
-	"github.com/coreos/dex/user"
-	"math/rand"
 	"google.golang.org/grpc/grpclog"
-	"os"
-	golog "log"
+	"google.golang.org/grpc/metadata"
+	"github.com/coreos/dex/repo"
 )
+
+const OtsimoUserTypeClaim = "otsimo.com/typ"
 
 type grpcServer struct {
 	server           *server.Server
 	idp              *connector.LocalIdentityProvider
 	localConnectorID string
+	begin            repo.TransactionFactory
 }
 
 func parseBasicAuth(auth string) (username, password string, ok bool) {
@@ -145,6 +151,10 @@ func (s *grpcServer) Token(userID, clientID string, iat, exp time.Time) (*jose.J
 	claims := oidc.NewClaims(s.server.IssuerURL.String(), userID, clientID, iat, exp)
 	user.AddToClaims(claims)
 
+	if user.Admin {
+		claims.Add(OtsimoUserTypeClaim, "adm")
+	}
+
 	jwt, err := jose.NewSignedJWT(claims, signer)
 	if err != nil {
 		log.Errorf("grpc.go: Failed to generate ID token: %v", err)
@@ -237,7 +247,7 @@ func (g *grpcServer) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.
 	}, nil
 }
 
-func (g *grpcServer) RemoveUser(ctx context.Context, in *pb.RemoveRequest) (*pb.RemoveResponse, error) {
+func (g *grpcServer) RemoveUser(ctx context.Context, in *pb.RemoveRequest) (*pb.Response, error) {
 	jwtClient, err := getJWTToken(ctx)
 	if err != nil {
 		log.Errorf("grpc.go: getJWTToken error %v", err)
@@ -258,18 +268,123 @@ func (g *grpcServer) RemoveUser(ctx context.Context, in *pb.RemoveRequest) (*pb.
 		return nil, errors.New("given email is different than old one")
 	}
 	err = g.server.UserRepo.Update(nil, user.User{
-		ID: in.Id,
-		Email: fmt.Sprintf("$$%s$%s", randStringBytesRmndr(4), in.Email),
+		ID:       in.Id,
+		Email:    fmt.Sprintf("$$%s$%s", randStringBytesRmndr(4), in.Email),
 		Disabled: false,
 	})
 	if err != nil {
 		log.Errorf("grpc.go: failed to update-remove user %+v", err)
 		return nil, err
 	}
-	return &pb.RemoveResponse{Type:0}, nil
+	return &pb.Response{Type: 0}, nil
 }
 
-func ServeGrpc(cfg *server.ServerConfig, srv *server.Server, grpcUrl string, certFile, keyFile string) {
+func (g *grpcServer) ChangeEmail(ctx context.Context, in *pb.ChangeEmailRequest) (*pb.Response, error) {
+	jwtClient, err := getJWTToken(ctx)
+	if err != nil {
+		log.Errorf("grpc.go: getJWTToken error %v", err)
+		return nil, err
+	}
+	_, _, err = g.authToken(jwtClient)
+	if err != nil {
+		log.Errorf("grpc.go: authToken failed error=%v", err)
+		return nil, err
+	}
+	u, err := g.server.UserRepo.GetByEmail(nil, in.OldEmail)
+	if err != nil {
+		log.Errorf("grpc.go: change email user not found =%v", err)
+		return nil, err
+	}
+	err = g.server.UserRepo.Update(nil, user.User{
+		ID:    u.ID,
+		Email: in.NewEmail,
+	})
+	if err != nil {
+		log.Errorf("grpc.go: failed to change email of user %+v", err)
+		return nil, err
+	}
+	return &pb.Response{Type: 0}, nil
+}
+
+type passwordChange struct {
+	userID      string
+	oldPassword []byte
+}
+
+func (p *passwordChange) UserID() string {
+	return p.userID
+}
+func (p *passwordChange) Password() user.Password {
+	return user.Password(p.oldPassword)
+}
+func (p *passwordChange) Callback() *url.URL {
+	u, _ := url.Parse("https://accounts.otsimo.com")
+	return u
+}
+
+func (g *grpcServer) ChangePassword(ctx context.Context, in *pb.ChangePasswordRequest) (*pb.Response, error) {
+	jwtClient, err := getJWTToken(ctx)
+	if err != nil {
+		log.Errorf("grpc.go: getJWTToken error %v", err)
+		return nil, err
+	}
+	_, _, err = g.authToken(jwtClient)
+	if err != nil {
+		log.Errorf("grpc.go: authToken failed error=%v", err)
+		return nil, err
+	}
+	err = g.ChangeUserPass(in.UserId, in.NewPassword, in.OldPassword)
+	if err != nil {
+		log.Errorf("grpc.go: failed to change password of user. err= %+v", err)
+		return nil, err
+	}
+	return &pb.Response{Type: 0}, nil
+}
+
+func (g *grpcServer)ChangeUserPass(userID string, plaintext string, oldPassword string) error {
+	tx, err := g.begin()
+	if err != nil {
+		return err
+	}
+
+	if !user.ValidPassword(plaintext) {
+		rollback(tx)
+		return user.ErrorInvalidPassword
+	}
+
+	pwi, err := g.server.PasswordInfoRepo.Get(tx, userID)
+	if err != nil {
+		rollback(tx)
+		return err
+	}
+	_, err = pwi.Authenticate(oldPassword)
+	if err != nil {
+		rollback(tx)
+		return user.ErrorPasswordHashNoMatch
+	}
+
+	newPass, err := user.NewPasswordFromPlaintext(plaintext)
+	if err != nil {
+		rollback(tx)
+		return err
+	}
+
+	pwi.Password = newPass
+	err = g.server.PasswordInfoRepo.Update(tx, pwi)
+	if err != nil {
+		rollback(tx)
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		rollback(tx)
+		return err
+	}
+	return nil
+}
+
+func ServeGrpc(cfg *server.ServerConfig, srv *server.Server, grpcUrl string, certFile, keyFile string, tf repo.TransactionFactory) {
 	var opts []grpc.ServerOption
 	if certFile != "" && keyFile != "" {
 		creds, err := credentials.NewServerTLSFromFile(certFile, keyFile)
@@ -286,6 +401,7 @@ func ServeGrpc(cfg *server.ServerConfig, srv *server.Server, grpcUrl string, cer
 			UserRepo:         srv.UserRepo,
 			PasswordInfoRepo: srv.PasswordInfoRepo,
 		},
+		begin: tf,
 	}
 
 	for _, c := range srv.Connectors {
@@ -314,4 +430,11 @@ func randStringBytesRmndr(n int) string {
 		b[i] = letterBytes[rand.Int63() % int64(len(letterBytes))]
 	}
 	return string(b)
+}
+
+func rollback(tx repo.Transaction) {
+	err := tx.Rollback()
+	if err != nil {
+		log.Errorf("unable to rollback: %v", err)
+	}
 }

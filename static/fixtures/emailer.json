@@ -1,5 +1,6 @@
 {
   "type": "otsimo",
   "grpcUrl": "127.0.0.1:18844",
-  "useTls": false
+  "useTls": false,
+  "fake": true
 }

@@ -137,6 +137,17 @@ func main() {
 	accounts.ConnectToServices(*connectService, *apiService)
 
 	mux := NewClientHandler(accounts, *discovery, *redirectURLParsed)
+
+	mux.Handle("/update/password", negroni.New(
+		newTokenValidator(accounts),
+		negroni.Wrap(handleChangePasswordFunc(accounts)),
+	))
+
+	mux.Handle("/update/email", negroni.New(
+		newTokenValidator(accounts),
+		negroni.Wrap(handleChangeEmailFunc(accounts)),
+	))
+
 	n := negroni.New(negroni.NewRecovery(), NewLogger())
 	n.UseHandler(mux)
 	log.Infof("Binding to :%s...", p)
@@ -144,7 +155,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", p), n))
 }
 
-func NewClientHandler(o *OtsimoAccounts, issuer string, cbURL url.URL) http.Handler {
+func NewClientHandler(o *OtsimoAccounts, issuer string, cbURL url.URL) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	issuerURL, err := url.Parse(issuer)
@@ -152,7 +163,7 @@ func NewClientHandler(o *OtsimoAccounts, issuer string, cbURL url.URL) http.Hand
 		log.Fatalf("Could not parse issuer url: %v", err)
 	}
 
-	mux.HandleFunc("/", handleIndex)
+	//mux.HandleFunc("/", handleIndex)
 	mux.HandleFunc("/login", handleLoginFunc(o))
 	mux.HandleFunc("/register", handleRegisterFunc(o))
 	mux.HandleFunc(pathCallback, handleCallbackFunc(o))

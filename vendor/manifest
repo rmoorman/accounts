@@ -2,9 +2,87 @@
 	"version": 0,
 	"dependencies": [
 		{
+			"importpath": "github.com/armon/go-radix",
+			"repository": "https://github.com/armon/go-radix",
+			"revision": "fbd82e84e2b13651f3abc5ffd26b65ba71bc8f93",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/bgentry/speakeasy",
+			"repository": "https://github.com/bgentry/speakeasy",
+			"revision": "36e9cfdd690967f4f690c6edcc9ffacd006014a0",
+			"branch": "master"
+		},
+		{
 			"importpath": "github.com/codegangsta/negroni",
 			"repository": "https://github.com/codegangsta/negroni",
 			"revision": "c7477ad8e330bef55bf1ebe300cf8aa67c492d1b",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/coreos/go-oidc",
+			"repository": "https://github.com/coreos/go-oidc",
+			"revision": "145916abb78708694762ff359ab1e34c47c7947f",
+			"branch": "HEAD"
+		},
+		{
+			"importpath": "github.com/coreos/go-systemd/journal",
+			"repository": "https://github.com/coreos/go-systemd",
+			"revision": "2ed5b5012ccde5f057c197890a2c801295941149",
+			"branch": "master",
+			"path": "/journal"
+		},
+		{
+			"importpath": "github.com/coreos/pkg/capnslog",
+			"repository": "https://github.com/coreos/pkg",
+			"revision": "2c77715c4df99b5420ffcae14ead08f52104065d",
+			"branch": "master",
+			"path": "/capnslog"
+		},
+		{
+			"importpath": "github.com/coreos/pkg/flagutil",
+			"repository": "https://github.com/coreos/pkg",
+			"revision": "2c77715c4df99b5420ffcae14ead08f52104065d",
+			"branch": "master",
+			"path": "/flagutil"
+		},
+		{
+			"importpath": "github.com/coreos/pkg/health",
+			"repository": "https://github.com/coreos/pkg",
+			"revision": "2c77715c4df99b5420ffcae14ead08f52104065d",
+			"branch": "master",
+			"path": "/health"
+		},
+		{
+			"importpath": "github.com/coreos/pkg/httputil",
+			"repository": "https://github.com/coreos/pkg",
+			"revision": "2c77715c4df99b5420ffcae14ead08f52104065d",
+			"branch": "master",
+			"path": "/httputil"
+		},
+		{
+			"importpath": "github.com/coreos/pkg/timeutil",
+			"repository": "https://github.com/coreos/pkg",
+			"revision": "2c77715c4df99b5420ffcae14ead08f52104065d",
+			"branch": "master",
+			"path": "/timeutil"
+		},
+		{
+			"importpath": "github.com/denisenkom/go-mssqldb",
+			"repository": "https://github.com/denisenkom/go-mssqldb",
+			"revision": "4623535a2b1c4a613d7a75899b1422d8186fe9b7",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/go-gorp/gorp",
+			"repository": "https://github.com/go-gorp/gorp",
+			"revision": "2f6d659f47d958a61a41cf8a5512d840330901bd",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/go-sql-driver/mysql",
+			"repository": "https://github.com/go-sql-driver/mysql",
+			"revision": "6fd058ce0d6b7ee43174e80d5a3e7f483c4dfbe5",
 			"branch": "master"
 		},
 		{
@@ -35,6 +113,72 @@
 			"path": "/proto/testdata"
 		},
 		{
+			"importpath": "github.com/gorilla/handlers",
+			"repository": "https://github.com/gorilla/handlers",
+			"revision": "7409928170f9f1cbaa874840dc4ff8df161a6c25",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/jonboulle/clockwork",
+			"repository": "https://github.com/jonboulle/clockwork",
+			"revision": "ed104f61ea4877bea08af6f759805674861e968d",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/julienschmidt/httprouter",
+			"repository": "https://github.com/julienschmidt/httprouter",
+			"revision": "21439ef4d70ba4f3e2a5ed9249e7b03af4019b40",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/lib/pq",
+			"repository": "https://github.com/lib/pq",
+			"revision": "8ad2b298cadd691a77015666a5372eae5dbfac8f",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/mailgun/mailgun-go",
+			"repository": "https://github.com/mailgun/mailgun-go",
+			"revision": "56726ce4cd9da46e8d8b10a7257d12f69752b67d",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/mattn/go-isatty",
+			"repository": "https://github.com/mattn/go-isatty",
+			"revision": "56b76bdf51f7708750eac80fa38b952bb9f32639",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/mattn/go-runewidth",
+			"repository": "https://github.com/mattn/go-runewidth",
+			"revision": "e882a96ec18dd43fa283187b66af74497c9101c0",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/mattn/go-sqlite3",
+			"repository": "https://github.com/mattn/go-sqlite3",
+			"revision": "5510da399572b4962c020184bb291120c0a412e2",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/mbanzon/simplehttp",
+			"repository": "https://github.com/mbanzon/simplehttp",
+			"revision": "04c542e7ac706a25820090f274ea6a4f39a63326",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/mitchellh/cli",
+			"repository": "https://github.com/mitchellh/cli",
+			"revision": "cb6853d606ea4a12a15ac83cc43503df99fd28fb",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/olekukonko/tablewriter",
+			"repository": "https://github.com/olekukonko/tablewriter",
+			"revision": "48dc4474bcf3e0134e9a64222207b1e020f171e9",
+			"branch": "master"
+		},
+		{
 			"importpath": "github.com/otsimo/api/apipb",
 			"repository": "https://github.com/otsimo/api",
 			"revision": "bc601bb41fe6c2c71d067dc76818dcc16e383022",
@@ -47,6 +191,33 @@
 			"revision": "1ac836c6539fe848151ef6ec7b4975229f087f70",
 			"branch": "master",
 			"path": "/notificationpb"
+		},
+		{
+			"importpath": "github.com/rubenv/sql-migrate",
+			"repository": "https://github.com/rubenv/sql-migrate",
+			"revision": "53184e1edfb4f9655b0fa8dd2c23e7763f452bda",
+			"branch": "master"
+		},
+		{
+			"importpath": "golang.org/x/crypto/bcrypt",
+			"repository": "https://go.googlesource.com/crypto",
+			"revision": "3760e016850398b85094c4c99e955b8c3dea5711",
+			"branch": "master",
+			"path": "/bcrypt"
+		},
+		{
+			"importpath": "golang.org/x/crypto/blowfish",
+			"repository": "https://go.googlesource.com/crypto",
+			"revision": "3760e016850398b85094c4c99e955b8c3dea5711",
+			"branch": "master",
+			"path": "/blowfish"
+		},
+		{
+			"importpath": "golang.org/x/crypto/md4",
+			"repository": "https://go.googlesource.com/crypto",
+			"revision": "3760e016850398b85094c4c99e955b8c3dea5711",
+			"branch": "master",
+			"path": "/md4"
 		},
 		{
 			"importpath": "golang.org/x/net/context",
@@ -83,6 +254,13 @@
 			"branch": "master"
 		},
 		{
+			"importpath": "google.golang.org/api/googleapi",
+			"repository": "https://code.googlesource.com/google-api-go-client",
+			"revision": "b2be3c69519a81292faa7016d3c87f8b68c6f0d9",
+			"branch": "master",
+			"path": "/googleapi"
+		},
+		{
 			"importpath": "google.golang.org/cloud/compute/metadata",
 			"repository": "https://code.googlesource.com/gocloud",
 			"revision": "6fdcab499d2c45e2939521c4047855f12a745a1d",
@@ -103,11 +281,29 @@
 			"branch": "master"
 		},
 		{
+			"importpath": "gopkg.in/gomail.v2",
+			"repository": "https://gopkg.in/gomail.v2",
+			"revision": "fbb71ddc63acd07dd0ed49ababdf02c551e2539a",
+			"branch": "v2"
+		},
+		{
+			"importpath": "gopkg.in/gorp.v1",
+			"repository": "https://gopkg.in/gorp.v1",
+			"revision": "c87af80f3cc5036b55b83d77171e156791085e2e",
+			"branch": "master"
+		},
+		{
 			"importpath": "gopkg.in/mgo.v2/bson",
 			"repository": "https://gopkg.in/mgo.v2",
 			"revision": "e30de8ac9ae3b30df7065f766c71f88bba7d4e49",
 			"branch": "v2",
 			"path": "/bson"
+		},
+		{
+			"importpath": "gopkg.in/yaml.v1",
+			"repository": "https://gopkg.in/yaml.v1",
+			"revision": "9f9df34309c04878acc86042b16630b0f696e1de",
+			"branch": "v1"
 		}
 	]
 }

@@ -13,28 +13,28 @@ LD_FLAGS="-X main.version=$BUILD_VERSION"
 
 if [ "$1" = "cross" ]; then
     echo "Cross Build for linux and osx"
-    env GOOS=linux GOARCH=amd64 go build -o bin/dex-worker-linux-amd64 -ldflags="$LD_FLAGS" otsimo/dex-worker
-    env GOOS=linux GOARCH=amd64 go build -o bin/accounts-linux-amd64 -ldflags="$LD_FLAGS" otsimo/accounts
-    env GOOS=linux GOARCH=amd64 go build -o bin/dexctl-linux-amd64 -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dexctl
-    env GOOS=linux GOARCH=amd64 go build -o bin/dex-overlord-linux-amd64 -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dex-overlord
+    env GOOS=linux GOARCH=amd64 gb build -ldflags="$LD_FLAGS" otsimo/dex-worker
+    env GOOS=linux GOARCH=amd64 gb build -ldflags="$LD_FLAGS" otsimo/accounts
+#   env GOOS=linux GOARCH=amd64 go build -o bin/dexctl-linux-amd64 -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dexctl
+    env GOOS=linux GOARCH=amd64 gb build -ldflags="$LD_FLAGS" otsimo/dex-overlord
 
-    env GOOS=darwin GOARCH=amd64 go build -o bin/dex-worker -ldflags="$LD_FLAGS" otsimo/dex-worker
-    env GOOS=darwin GOARCH=amd64 go build -o bin/accounts -ldflags="$LD_FLAGS" otsimo/accounts
-    env GOOS=darwin GOARCH=amd64 go build -o bin/dexctl -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dexctl
-    env GOOS=darwin GOARCH=amd64 go build -o bin/dex-overlord -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dex-overlord
+    env GOOS=darwin GOARCH=amd64 gb build -ldflags="$LD_FLAGS" otsimo/dex-worker
+    env GOOS=darwin GOARCH=amd64 gb build -ldflags="$LD_FLAGS" otsimo/accounts
+#   env GOOS=darwin GOARCH=amd64 go build -o bin/dexctl -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dexctl
+    env GOOS=darwin GOARCH=amd64 gb build -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dex-overlord
 
 elif [ "$1" = "docker" ]; then
     echo "Cross Build for linux amd64"
-    env GOOS=linux GOARCH=amd64 go build -o bin/dex-worker-linux-amd64 -ldflags="$LD_FLAGS" otsimo/dex-worker
-    env GOOS=linux GOARCH=amd64 go build -o bin/accounts-linux-amd64 -ldflags="$LD_FLAGS" otsimo/accounts
-    env GOOS=linux GOARCH=amd64 go build -o bin/dexctl-linux-amd64 -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dexctl
-    env GOOS=linux GOARCH=amd64 go build -o bin/dex-overlord-linux-amd64 -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dex-overlord
+    env GOOS=linux GOARCH=amd64 gb build -ldflags="$LD_FLAGS" otsimo/dex-worker
+    env GOOS=linux GOARCH=amd64 gb build -ldflags="$LD_FLAGS" otsimo/accounts
+#   env GOOS=linux GOARCH=amd64 go build -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dexctl
+    env GOOS=linux GOARCH=amd64 gb build --ldflags="$LD_FLAGS" otsimo/dex-overlord
 else
     echo "Build for" $(go env GOOS)
-    go build -o bin/dex-worker -ldflags="$LD_FLAGS" otsimo/dex-worker
-    go build -o bin/accounts -ldflags="$LD_FLAGS" otsimo/accounts
-    go build -o bin/dexctl -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dexctl
-    go build -o bin/dex-overlord -ldflags="$LD_FLAGS" github.com/coreos/dex/cmd/dex-overlord
+    gb build -ldflags="$LD_FLAGS" otsimo/dex-worker
+    gb build -ldflags="$LD_FLAGS" otsimo/accounts
+#   gb build -ldflags="$LD_FLAGS" otsimo/dexctl
+    gb build -ldflags="$LD_FLAGS" otsimo/dex-overlord
 fi
 
 # Rename files

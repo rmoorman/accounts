@@ -35,12 +35,25 @@ message RemoveRequest{
     string email = 2;
 }
 
-message RemoveResponse{
+message Response{
     int32 type = 1;
+}
+
+message ChangeEmailRequest{
+    string old_email = 1;
+    string new_email = 2;
+}
+
+message ChangePasswordRequest{
+    string user_id = 1;
+    string old_password = 2;
+    string new_password = 3;
 }
 
 service DexService {
     rpc Login(LoginRequest) returns (Token){}
     rpc Register(RegisterRequest) returns (RegisterResponse){}
-    rpc RemoveUser(RemoveRequest) returns(RemoveResponse){}
+    rpc RemoveUser(RemoveRequest) returns(Response){}
+    rpc ChangeEmail(ChangeEmailRequest) returns(Response){}
+    rpc ChangePassword(ChangePasswordRequest) returns(Response){}
 }

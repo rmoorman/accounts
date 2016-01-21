@@ -33,7 +33,6 @@ func main() {
 	fs := flag.NewFlagSet("dex-worker", flag.ExitOnError)
 	listen := fs.String("listen", "http://127.0.0.1:18848", "the address that the server will listen on")
 	grpcUrl := fs.String("grpc", "127.0.0.1:18849", "the address that the grpc server will listen on")
-
 	issuer := fs.String("issuer", "http://127.0.0.1:18848", "the issuer's location")
 
 	certFile := fs.String("tls-cert-file", "", "the server's certificate file for TLS connection")
@@ -146,7 +145,7 @@ func main() {
 		if len(cfgs) > 0 && err == nil {
 			break
 		}
-		sleep = ptime.ExpBackoff(sleep, 8*time.Second)
+		sleep = ptime.ExpBackoff(sleep, 8 * time.Second)
 		if err != nil {
 			log.Errorf("Unable to load connectors, retrying in %v: %v", sleep, err)
 		} else {
@@ -174,10 +173,10 @@ func main() {
 	log.Infof("Binding to %s...", httpsrv.Addr)
 	go func() {
 		if lu.Scheme == "http" {
-			go ServeGrpc(&scfg, srv, *grpcUrl, "", "")
+			go ServeGrpc(&scfg, srv, *grpcUrl, "", "", dbDriver.GetTransactionFactory())
 			log.Fatal(httpsrv.ListenAndServe())
 		} else {
-			go ServeGrpc(&scfg, srv, *grpcUrl, *certFile, *keyFile)
+			go ServeGrpc(&scfg, srv, *grpcUrl, *certFile, *keyFile, dbDriver.GetTransactionFactory())
 			log.Fatal(httpsrv.ListenAndServeTLS(*certFile, *keyFile))
 		}
 	}()

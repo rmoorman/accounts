@@ -7,8 +7,8 @@ import (
 	"net/url"
 
 	"github.com/coreos/dex/pkg/log"
-	"golang.org/x/net/context"
 	"github.com/otsimo/api/apipb"
+	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -72,16 +72,16 @@ func registerUser(o *OtsimoAccounts, email, password, firstName, lastName, langu
 		return nil, err
 	}
 	_, errapi := o.Api.AddProfile(context.Background(), &apipb.Profile{
-		Id:bson.ObjectIdHex(resp.UserId),
-		Email:email,
-		FirstName:firstName,
-		LastName:lastName,
-		Language:language,
+		Id:        bson.ObjectIdHex(resp.UserId),
+		Email:     email,
+		FirstName: firstName,
+		LastName:  lastName,
+		Language:  language,
 	})
 	if errapi != nil {
 		//Disable or delete user
 		log.Errorf("register.go: failed to add profile %+v", errapi)
-		_, err = o.Dex.RemoveUser(context.Background(), &pb.RemoveRequest{Id:resp.UserId, Email:email})
+		_, err = o.Dex.RemoveUser(context.Background(), &pb.RemoveRequest{Id: resp.UserId, Email: email})
 		if err != nil {
 			log.Errorf("register.go: Holly FUCK!!: failed to add profile and remove user [error]=%+v [user_id]='%s' [user_email]='%s'", err, resp.UserId, email)
 			return nil, err

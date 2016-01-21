@@ -14,7 +14,9 @@
 		RegisterRequest
 		RegisterResponse
 		RemoveRequest
-		RemoveResponse
+		Response
+		ChangeEmailRequest
+		ChangePasswordRequest
 */
 package accountspb
 
@@ -83,13 +85,32 @@ func (m *RemoveRequest) Reset()         { *m = RemoveRequest{} }
 func (m *RemoveRequest) String() string { return proto.CompactTextString(m) }
 func (*RemoveRequest) ProtoMessage()    {}
 
-type RemoveResponse struct {
+type Response struct {
 	Type int32 `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty"`
 }
 
-func (m *RemoveResponse) Reset()         { *m = RemoveResponse{} }
-func (m *RemoveResponse) String() string { return proto.CompactTextString(m) }
-func (*RemoveResponse) ProtoMessage()    {}
+func (m *Response) Reset()         { *m = Response{} }
+func (m *Response) String() string { return proto.CompactTextString(m) }
+func (*Response) ProtoMessage()    {}
+
+type ChangeEmailRequest struct {
+	OldEmail string `protobuf:"bytes,1,opt,name=old_email,proto3" json:"old_email,omitempty"`
+	NewEmail string `protobuf:"bytes,2,opt,name=new_email,proto3" json:"new_email,omitempty"`
+}
+
+func (m *ChangeEmailRequest) Reset()         { *m = ChangeEmailRequest{} }
+func (m *ChangeEmailRequest) String() string { return proto.CompactTextString(m) }
+func (*ChangeEmailRequest) ProtoMessage()    {}
+
+type ChangePasswordRequest struct {
+	UserId      string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	OldPassword string `protobuf:"bytes,2,opt,name=old_password,proto3" json:"old_password,omitempty"`
+	NewPassword string `protobuf:"bytes,3,opt,name=new_password,proto3" json:"new_password,omitempty"`
+}
+
+func (m *ChangePasswordRequest) Reset()         { *m = ChangePasswordRequest{} }
+func (m *ChangePasswordRequest) String() string { return proto.CompactTextString(m) }
+func (*ChangePasswordRequest) ProtoMessage()    {}
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
@@ -100,7 +121,9 @@ var _ grpc.ClientConn
 type DexServiceClient interface {
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*Token, error)
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
-	RemoveUser(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*RemoveResponse, error)
+	RemoveUser(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*Response, error)
+	ChangeEmail(ctx context.Context, in *ChangeEmailRequest, opts ...grpc.CallOption) (*Response, error)
+	ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*Response, error)
 }
 
 type dexServiceClient struct {
@@ -129,9 +152,27 @@ func (c *dexServiceClient) Register(ctx context.Context, in *RegisterRequest, op
 	return out, nil
 }
 
-func (c *dexServiceClient) RemoveUser(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*RemoveResponse, error) {
-	out := new(RemoveResponse)
+func (c *dexServiceClient) RemoveUser(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
 	err := grpc.Invoke(ctx, "/accountspb.DexService/RemoveUser", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dexServiceClient) ChangeEmail(ctx context.Context, in *ChangeEmailRequest, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := grpc.Invoke(ctx, "/accountspb.DexService/ChangeEmail", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dexServiceClient) ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := grpc.Invoke(ctx, "/accountspb.DexService/ChangePassword", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +184,9 @@ func (c *dexServiceClient) RemoveUser(ctx context.Context, in *RemoveRequest, op
 type DexServiceServer interface {
 	Login(context.Context, *LoginRequest) (*Token, error)
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
-	RemoveUser(context.Context, *RemoveRequest) (*RemoveResponse, error)
+	RemoveUser(context.Context, *RemoveRequest) (*Response, error)
+	ChangeEmail(context.Context, *ChangeEmailRequest) (*Response, error)
+	ChangePassword(context.Context, *ChangePasswordRequest) (*Response, error)
 }
 
 func RegisterDexServiceServer(s *grpc.Server, srv DexServiceServer) {
@@ -186,6 +229,30 @@ func _DexService_RemoveUser_Handler(srv interface{}, ctx context.Context, dec fu
 	return out, nil
 }
 
+func _DexService_ChangeEmail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(ChangeEmailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(DexServiceServer).ChangeEmail(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _DexService_ChangePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(ChangePasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(DexServiceServer).ChangePassword(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 var _DexService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "accountspb.DexService",
 	HandlerType: (*DexServiceServer)(nil),
@@ -201,6 +268,14 @@ var _DexService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveUser",
 			Handler:    _DexService_RemoveUser_Handler,
+		},
+		{
+			MethodName: "ChangeEmail",
+			Handler:    _DexService_ChangeEmail_Handler,
+		},
+		{
+			MethodName: "ChangePassword",
+			Handler:    _DexService_ChangePassword_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
@@ -372,7 +447,7 @@ func (m *RemoveRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RemoveResponse) Marshal() (data []byte, err error) {
+func (m *Response) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -382,7 +457,7 @@ func (m *RemoveResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RemoveResponse) MarshalTo(data []byte) (int, error) {
+func (m *Response) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -391,6 +466,72 @@ func (m *RemoveResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x8
 		i++
 		i = encodeVarintAccounts(data, i, uint64(m.Type))
+	}
+	return i, nil
+}
+
+func (m *ChangeEmailRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ChangeEmailRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.OldEmail) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintAccounts(data, i, uint64(len(m.OldEmail)))
+		i += copy(data[i:], m.OldEmail)
+	}
+	if len(m.NewEmail) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintAccounts(data, i, uint64(len(m.NewEmail)))
+		i += copy(data[i:], m.NewEmail)
+	}
+	return i, nil
+}
+
+func (m *ChangePasswordRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ChangePasswordRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.UserId) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintAccounts(data, i, uint64(len(m.UserId)))
+		i += copy(data[i:], m.UserId)
+	}
+	if len(m.OldPassword) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintAccounts(data, i, uint64(len(m.OldPassword)))
+		i += copy(data[i:], m.OldPassword)
+	}
+	if len(m.NewPassword) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintAccounts(data, i, uint64(len(m.NewPassword)))
+		i += copy(data[i:], m.NewPassword)
 	}
 	return i, nil
 }
@@ -500,11 +641,43 @@ func (m *RemoveRequest) Size() (n int) {
 	return n
 }
 
-func (m *RemoveResponse) Size() (n int) {
+func (m *Response) Size() (n int) {
 	var l int
 	_ = l
 	if m.Type != 0 {
 		n += 1 + sovAccounts(uint64(m.Type))
+	}
+	return n
+}
+
+func (m *ChangeEmailRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.OldEmail)
+	if l > 0 {
+		n += 1 + l + sovAccounts(uint64(l))
+	}
+	l = len(m.NewEmail)
+	if l > 0 {
+		n += 1 + l + sovAccounts(uint64(l))
+	}
+	return n
+}
+
+func (m *ChangePasswordRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.UserId)
+	if l > 0 {
+		n += 1 + l + sovAccounts(uint64(l))
+	}
+	l = len(m.OldPassword)
+	if l > 0 {
+		n += 1 + l + sovAccounts(uint64(l))
+	}
+	l = len(m.NewPassword)
+	if l > 0 {
+		n += 1 + l + sovAccounts(uint64(l))
 	}
 	return n
 }
@@ -1124,7 +1297,7 @@ func (m *RemoveRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RemoveResponse) Unmarshal(data []byte) error {
+func (m *Response) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1147,10 +1320,10 @@ func (m *RemoveResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1172,6 +1345,251 @@ func (m *RemoveResponse) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAccounts(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAccounts
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeEmailRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAccounts
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ChangeEmailRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ChangeEmailRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OldEmail", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAccounts
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAccounts
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.OldEmail = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NewEmail", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAccounts
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAccounts
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NewEmail = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAccounts(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAccounts
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangePasswordRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAccounts
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ChangePasswordRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ChangePasswordRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UserId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAccounts
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAccounts
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.UserId = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OldPassword", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAccounts
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAccounts
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.OldPassword = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NewPassword", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAccounts
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAccounts
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NewPassword = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipAccounts(data[iNdEx:])

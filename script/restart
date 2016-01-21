@@ -7,7 +7,7 @@ kill -KILL $(ps aux | grep ./bin/accounts | grep -v grep | awk '{print $2}')
 
 
 # Start the overlord
-./bin/dex-overlord-darwin-amd64 --db $DEX_DB --admin-listen http://127.0.0.1:18850 &
+./bin/dex-overlord-darwin-amd64 --db $DEX_DB  --log-debug --admin-listen http://127.0.0.1:18850 &
 echo "Waiting for overlord to start..."
 until $(curl --output /dev/null --silent --fail http://localhost:18850/health); do
     printf '.'
@@ -15,7 +15,7 @@ until $(curl --output /dev/null --silent --fail http://localhost:18850/health); 
 done
 
 # Start the worker
-./bin/dex-worker-darwin-amd64 --db postgresql --enable-registration --listen http://0.0.0.0:18848 --grpc 0.0.0.0:18849 &
+./bin/dex-worker-darwin-amd64 --db postgresql --log-debug --enable-registration --listen http://0.0.0.0:18848 --grpc 0.0.0.0:18849 &
 echo "Waiting for worker to start..."
 until $(curl --output /dev/null --silent --fail http://localhost:18848/health); do
     printf '.'
@@ -25,5 +25,5 @@ done
 source accounts_client.txt
 
 # Start the app
-./bin/accounts-darwin-amd64 --client-id=$DEX_APP_CLIENT_ID --client-secret=$DEX_APP_CLIENT_SECRET --discovery=http://127.0.0.1:18848 --listen http://0.0.0.0:18856 --dex 127.0.0.1:18849 &
+./bin/accounts-darwin-amd64 --client-id=$DEX_APP_CLIENT_ID --client-secret=$DEX_APP_CLIENT_SECRET --discovery=http://127.0.0.1:18848 --listen http://0.0.0.0:18856 --dex 127.0.0.1:18849 --log-debug &
 

@@ -3,13 +3,14 @@ package main
 import (
 	"encoding/json"
 
+	"errors"
+
 	"github.com/coreos/dex/email"
 	"github.com/coreos/dex/pkg/log"
-	"errors"
 	pb "github.com/otsimo/simple-notifications/notificationpb"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"golang.org/x/net/context"
 )
 
 const (
@@ -23,9 +24,10 @@ func init() {
 }
 
 type OtsimoEmailerConfig struct {
-	GrpcUrl string  `json:"grpcUrl"`
-	UseTls  bool    `json:"useTls"`
-	CaCert  string  `json:"caCert"`
+	GrpcUrl string `json:"grpcUrl"`
+	UseTls  bool   `json:"useTls"`
+	CaCert  string `json:"caCert"`
+	Fake    bool   `json:"fake"`
 }
 
 func (cfg OtsimoEmailerConfig) EmailerType() string {
@@ -38,22 +40,26 @@ func (cfg OtsimoEmailerConfig) EmailerID() string {
 
 func (cfg OtsimoEmailerConfig) Emailer() (email.Emailer, error) {
 	var opts []grpc.DialOption
-	if cfg.UseTls {
-		auth, err := credentials.NewClientTLSFromFile(cfg.CaCert, "")
-		if err != nil {
-			panic(err)
-		}else {
-			opts = append(opts, grpc.WithTransportCredentials(auth))
-		}
+	if cfg.Fake {
+		return &otsimoEmailer{fake: true}, nil
 	} else {
-		opts = append(opts, grpc.WithInsecure())
+		if cfg.UseTls {
+			auth, err := credentials.NewClientTLSFromFile(cfg.CaCert, "")
+			if err != nil {
+				panic(err)
+			} else {
+				opts = append(opts, grpc.WithTransportCredentials(auth))
+			}
+		} else {
+			opts = append(opts, grpc.WithInsecure())
+		}
+		conn, err := grpc.Dial(cfg.GrpcUrl, opts...)
+		if err != nil {
+			log.Fatalf("email.go: Error while connection to notification service %v\n", err)
+		}
+		client := pb.NewNotificationServiceClient(conn)
+		return &otsimoEmailer{client: client, fake: false}, nil
 	}
-	conn, err := grpc.Dial(cfg.GrpcUrl, opts...)
-	if err != nil {
-		log.Fatalf("email.go: Error while connection to notification service %v\n", err)
-	}
-	client := pb.NewNotificationServiceClient(conn)
-	return &otsimoEmailer{client:client}, nil
 }
 
 // otsimoEmailerConfig exists to avoid recusion.
@@ -74,19 +80,24 @@ func (cfg *OtsimoEmailerConfig) UnmarshalJSON(data []byte) error {
 }
 
 type otsimoEmailer struct {
+	fake   bool
 	client pb.NotificationServiceClient
 }
 
 func (m *otsimoEmailer) SendMail(from, subject, event, data string, to ...string) error {
 	email := &pb.Email{
-		FromEmail:from,
-		Subject:subject,
-		DataJson:data,
-		ToEmail:to,
+		FromEmail: from,
+		Subject:   subject,
+		DataJson:  data,
+		ToEmail:   to,
 	}
 	mes := &pb.Message{
-		Event:event,
-		Targets:pb.NewTargets(pb.NewEmailTarget(email)),
+		Event:   event,
+		Targets: pb.NewTargets(pb.NewEmailTarget(email)),
+	}
+	if m.fake {
+		log.Infof("email.go: email sent: %v", mes)
+		return nil
 	}
 	_, err := m.client.SendMessage(context.Background(), mes)
 	if err != nil {
