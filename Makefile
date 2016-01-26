@@ -15,9 +15,6 @@ release: clean vet
 	script/build docker
 	script/release
 
-run: build
-	script/run
-
 fmt:
 	goimports -w src
 

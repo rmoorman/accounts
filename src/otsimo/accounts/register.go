@@ -34,7 +34,7 @@ func handleRegisterFunc(o *OtsimoAccounts) http.HandlerFunc {
 	handleGET := func(w http.ResponseWriter, r *http.Request) {
 		oac, err := o.Oidc.OAuthClient()
 		if err != nil {
-			fmt.Errorf("failed to create OAuthClient %v", err)
+			log.Errorf("failed to create OAuthClient %v", err)
 			writeError(w, http.StatusInternalServerError, err.Error())
 		}
 
@@ -42,7 +42,7 @@ func handleRegisterFunc(o *OtsimoAccounts) http.HandlerFunc {
 		q := u.Query()
 		q.Set("register", "1")
 		if err != nil {
-			fmt.Errorf("failed to create authCoreURL %v", err)
+			log.Errorf("failed to create authCoreURL %v", err)
 			writeError(w, http.StatusInternalServerError, err.Error())
 		}
 		u.RawQuery = q.Encode()

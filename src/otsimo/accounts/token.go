@@ -41,7 +41,7 @@ func (l *TokenValidator) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 
 	claims, err := jwt.Claims()
 	if err != nil {
-		log.Error("token.go: failed to get claims %v", err)
+		log.Error("token.go: failed to get claims", err)
 		writeError(rw, http.StatusUnauthorized, "missing or invalid token")
 		return
 	}
