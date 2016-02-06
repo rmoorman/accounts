@@ -15,6 +15,7 @@ import (
 
 	"github.com/coreos/dex/connector"
 	"github.com/coreos/dex/pkg/log"
+	"github.com/coreos/dex/repo"
 	"github.com/coreos/dex/server"
 	"github.com/coreos/dex/session"
 	"github.com/coreos/dex/user"
@@ -27,7 +28,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
-	"github.com/coreos/dex/repo"
 )
 
 const OtsimoUserTypeClaim = "otsimo.com/typ"
@@ -53,7 +53,7 @@ func parseBasicAuth(auth string) (username, password string, ok bool) {
 	if s < 0 {
 		return
 	}
-	return cs[:s], cs[s + 1:], true
+	return cs[:s], cs[s+1:], true
 }
 
 func registerFromLocalConnector(userManager *manager.UserManager, connector, email, password string) (string, error) {
@@ -226,7 +226,7 @@ func (g *grpcServer) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.
 	}
 
 	//send email
-	g.server.UserEmailer.SendEmailVerification(id, clientId, md.RedirectURLs[0])
+	g.server.UserEmailer.SendEmailVerification(id, clientId, md.RedirectURIs[0])
 
 	now := time.Now()
 	jwt, rt, err := g.Token(id, clientId, now, now.Add(session.DefaultSessionValidityWindow))
@@ -341,7 +341,7 @@ func (g *grpcServer) ChangePassword(ctx context.Context, in *pb.ChangePasswordRe
 	return &pb.Response{Type: 0}, nil
 }
 
-func (g *grpcServer)ChangeUserPass(userID string, plaintext string, oldPassword string) error {
+func (g *grpcServer) ChangeUserPass(userID string, plaintext string, oldPassword string) error {
 	tx, err := g.begin()
 	if err != nil {
 		return err
@@ -427,7 +427,7 @@ const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 func randStringBytesRmndr(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Int63() % int64(len(letterBytes))]
+		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
 	}
 	return string(b)
 }

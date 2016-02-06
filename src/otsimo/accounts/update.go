@@ -1,8 +1,9 @@
 package main
 
 import (
-	"net/http"
 	pb "accountspb"
+	"net/http"
+
 	"github.com/coreos/dex/pkg/log"
 	"github.com/otsimo/api/apipb"
 	"golang.org/x/net/context"

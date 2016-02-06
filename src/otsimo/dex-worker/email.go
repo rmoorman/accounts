@@ -18,9 +18,9 @@ const (
 )
 
 func init() {
-	email.RegisterEmailerConfigType(OtsimoEmailerType, func() email.EmailerConfig {
+	/*email.RegisterEmailerConfigType(OtsimoEmailerType, func() email.EmailerConfig {
 		return &OtsimoEmailerConfig{}
-	})
+	})*/
 }
 
 type OtsimoEmailerConfig struct {

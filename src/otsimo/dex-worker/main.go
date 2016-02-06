@@ -7,19 +7,19 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
+	"github.com/coreos/pkg/flagutil"
+	"github.com/gorilla/handlers"
+
 	"github.com/coreos/dex/connector"
 	"github.com/coreos/dex/db"
-	_ "github.com/coreos/dex/db/memory"
-	_ "github.com/coreos/dex/db/postgresql"
 	pflag "github.com/coreos/dex/pkg/flag"
 	"github.com/coreos/dex/pkg/log"
 	ptime "github.com/coreos/dex/pkg/time"
 	"github.com/coreos/dex/server"
-	"github.com/coreos/pkg/flagutil"
-	"github.com/gorilla/handlers"
 )
 
 var version = "DEV"
@@ -33,6 +33,7 @@ func main() {
 	fs := flag.NewFlagSet("dex-worker", flag.ExitOnError)
 	listen := fs.String("listen", "http://127.0.0.1:18848", "the address that the server will listen on")
 	grpcUrl := fs.String("grpc", "127.0.0.1:18849", "the address that the grpc server will listen on")
+
 	issuer := fs.String("issuer", "http://127.0.0.1:18848", "the issuer's location")
 
 	certFile := fs.String("tls-cert-file", "", "the server's certificate file for TLS connection")
@@ -47,19 +48,30 @@ func main() {
 	emailConfig := fs.String("email-cfg", "./static/fixtures/emailer.json", "configures emailer.")
 
 	enableRegistration := fs.Bool("enable-registration", false, "Allows users to self-register")
+	enableClientRegistration := fs.Bool("enable-client-registration", false, "Allow dynamic registration of clients")
 
-	dnames := db.GetDriverNames()
-	dbName := fs.String("db", "postgresql", fmt.Sprintf("The database. Available drivers: %s", strings.Join(dnames, ", ")))
-	for _, d := range dnames {
-		db.GetDriver(d).InitFlags(fs)
-	}
+	noDB := fs.Bool("no-db", false, "manage entities in-process w/o any encryption, used only for single-node testing")
+
 	// UI-related:
 	issuerName := fs.String("issuer-name", "dex", "The name of this dex installation; will appear on most pages.")
 	issuerLogoURL := fs.String("issuer-logo-url", "https://coreos.com/assets/images/brand/coreos-wordmark-135x40px.png", "URL of an image representing the issuer")
 
+	// ignored if --no-db is set
+	dbURL := fs.String("db-url", "", "DSN-formatted database connection string")
+
 	keySecrets := pflag.NewBase64List(32)
 	fs.Var(keySecrets, "key-secrets", "A comma-separated list of base64 encoded 32 byte strings used as symmetric keys used to encrypt/decrypt signing key data in DB. The first key is considered the active key and used for encryption, while the others are used to decrypt.")
+
 	useOldFormat := fs.Bool("use-deprecated-secret-format", false, "In prior releases, the database used AES-CBC to encrypt keys. New deployments should use the default AES-GCM encryption.")
+
+	dbMaxIdleConns := fs.Int("db-max-idle-conns", 0, "maximum number of connections in the idle connection pool")
+	dbMaxOpenConns := fs.Int("db-max-open-conns", 0, "maximum number of open connections to the database")
+	printVersion := fs.Bool("version", false, "Print the version and exit")
+
+	// used only if --no-db is set
+	connectors := fs.String("connectors", "./static/fixtures/connectors.json", "JSON file containg set of IDPC configs")
+	clients := fs.String("clients", "./static/fixtures/clients.json", "json file containing set of clients")
+	users := fs.String("users", "./static/fixtures/users.json", "json file containing set of users")
 
 	logDebug := fs.Bool("log-debug", false, "log debug-level information")
 	logTimestamps := fs.Bool("log-timestamps", false, "prefix log lines with timestamps")
@@ -68,15 +80,15 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
+
 	if err := pflag.SetFlagsFromEnv(fs, "DEX_WORKER"); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
-	rd := db.GetDriver(*dbName)
-	if rd == nil {
-		fmt.Fprintf(os.Stderr, "there is no '%s' named db driver\n", *dbName)
-		os.Exit(1)
+	if *printVersion {
+		fmt.Printf("dex version %s\ngo version %s\n", strings.TrimPrefix(version, "v"), strings.TrimPrefix(runtime.Version(), "go"))
+		os.Exit(0)
 	}
 
 	if *logDebug {
@@ -113,23 +125,46 @@ func main() {
 	if iu.Scheme != "http" && iu.Scheme != "https" {
 		log.Fatalf("Only 'http' and 'https' schemes are supported")
 	}
-	dbDriver, err := rd.New()
-	if err != nil {
-		log.Fatalf("Error while initializing db %v", err)
-	}
 
 	scfg := server.ServerConfig{
-		IssuerURL:          *issuer,
-		TemplateDir:        *templates,
-		EmailTemplateDirs:  emailTemplateDirs,
-		EmailFromAddress:   *emailFrom,
-		EmailerConfigFile:  *emailConfig,
-		IssuerName:         *issuerName,
-		IssuerLogoURL:      *issuerLogoURL,
-		EnableRegistration: *enableRegistration,
-		UseOldFormat:       *useOldFormat,
-		KeySecrets:         keySecrets.BytesSlice(),
-		DB:                 dbDriver,
+		IssuerURL:                *issuer,
+		TemplateDir:              *templates,
+		EmailTemplateDirs:        emailTemplateDirs,
+		EmailFromAddress:         *emailFrom,
+		EmailerConfigFile:        *emailConfig,
+		IssuerName:               *issuerName,
+		IssuerLogoURL:            *issuerLogoURL,
+		EnableRegistration:       *enableRegistration,
+		EnableClientRegistration: *enableClientRegistration,
+	}
+
+	if *noDB {
+		log.Warning("Running in-process without external database or key rotation")
+		scfg.StateConfig = &server.SingleServerConfig{
+			ClientsFile:    *clients,
+			ConnectorsFile: *connectors,
+			UsersFile:      *users,
+		}
+	} else {
+		if len(keySecrets.BytesSlice()) == 0 {
+			log.Fatalf("Must specify at least one key secret")
+		}
+		if *dbMaxIdleConns == 0 {
+			log.Warning("Running with no limit on: database idle connections")
+		}
+		if *dbMaxOpenConns == 0 {
+			log.Warning("Running with no limit on: database open connections")
+		}
+		dbCfg := db.Config{
+			DSN:                *dbURL,
+			MaxIdleConnections: *dbMaxIdleConns,
+			MaxOpenConnections: *dbMaxOpenConns,
+		}
+		scfg.StateConfig = &server.MultiServerConfig{
+			KeySecrets:     keySecrets.BytesSlice(),
+			DatabaseConfig: dbCfg,
+			UseOldFormat:   *useOldFormat,
+		}
 	}
 
 	srv, err := scfg.Server()
@@ -145,7 +180,7 @@ func main() {
 		if len(cfgs) > 0 && err == nil {
 			break
 		}
-		sleep = ptime.ExpBackoff(sleep, 8 * time.Second)
+		sleep = ptime.ExpBackoff(sleep, 8*time.Second)
 		if err != nil {
 			log.Errorf("Unable to load connectors, retrying in %v: %v", sleep, err)
 		} else {
@@ -173,10 +208,10 @@ func main() {
 	log.Infof("Binding to %s...", httpsrv.Addr)
 	go func() {
 		if lu.Scheme == "http" {
-			go ServeGrpc(&scfg, srv, *grpcUrl, "", "", dbDriver.GetTransactionFactory())
+			go ServeGrpc(&scfg, srv, *grpcUrl, "", "", srv.UserManager.TransactionFactory())
 			log.Fatal(httpsrv.ListenAndServe())
 		} else {
-			go ServeGrpc(&scfg, srv, *grpcUrl, *certFile, *keyFile, dbDriver.GetTransactionFactory())
+			go ServeGrpc(&scfg, srv, *grpcUrl, *certFile, *keyFile, srv.UserManager.TransactionFactory())
 			log.Fatal(httpsrv.ListenAndServeTLS(*certFile, *keyFile))
 		}
 	}()

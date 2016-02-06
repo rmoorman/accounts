@@ -23,8 +23,8 @@ import (
 )
 
 var (
-	version = "DEV"
-	XRealIP = "X-Real-IP"
+	version       = "DEV"
+	XRealIP       = "X-Real-IP"
 	XForwardedFor = "X-Forwarded-For"
 )
 
@@ -220,7 +220,7 @@ func writeLog(req *http.Request, url url.URL, ts time.Time, status int, size int
 
 	uri := url.RequestURI()
 
-	buf := make([]byte, 0, 3 * (len(host) + len(username) + len(req.Method) + len(uri) + len(req.Proto) + 50) / 2)
+	buf := make([]byte, 0, 3*(len(host)+len(username)+len(req.Method)+len(uri)+len(req.Proto)+50)/2)
 	buf = append(buf, host...)
 	buf = append(buf, " - "...)
 	buf = append(buf, username...)
@@ -251,8 +251,8 @@ func appendQuoted(buf []byte, s string) []byte {
 		}
 		if width == 1 && r == utf8.RuneError {
 			buf = append(buf, `\x`...)
-			buf = append(buf, lowerhex[s[0] >> 4])
-			buf = append(buf, lowerhex[s[0] & 0xF])
+			buf = append(buf, lowerhex[s[0]>>4])
+			buf = append(buf, lowerhex[s[0]&0xF])
 			continue
 		}
 		if r == rune('"') || r == '\\' {
@@ -285,20 +285,20 @@ func appendQuoted(buf []byte, s string) []byte {
 			switch {
 			case r < ' ':
 				buf = append(buf, `\x`...)
-				buf = append(buf, lowerhex[s[0] >> 4])
-				buf = append(buf, lowerhex[s[0] & 0xF])
+				buf = append(buf, lowerhex[s[0]>>4])
+				buf = append(buf, lowerhex[s[0]&0xF])
 			case r > utf8.MaxRune:
 				r = 0xFFFD
 				fallthrough
 			case r < 0x10000:
 				buf = append(buf, `\u`...)
 				for s := 12; s >= 0; s -= 4 {
-					buf = append(buf, lowerhex[r >> uint(s) & 0xF])
+					buf = append(buf, lowerhex[r>>uint(s)&0xF])
 				}
 			default:
 				buf = append(buf, `\U`...)
 				for s := 28; s >= 0; s -= 4 {
-					buf = append(buf, lowerhex[r >> uint(s) & 0xF])
+					buf = append(buf, lowerhex[r>>uint(s)&0xF])
 				}
 			}
 		}

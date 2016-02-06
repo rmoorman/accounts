@@ -1,44 +1,37 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/coreos/dex/client"
 	"github.com/coreos/dex/connector"
 	"github.com/coreos/dex/db"
-	_ "github.com/coreos/dex/db/postgresql"
-	"github.com/coreos/go-oidc/oidc"
-	"errors"
 	"github.com/coreos/dex/user"
+	"github.com/coreos/go-oidc/oidc"
 )
 
-func newDBDriver(storage, dsn string) (driver, error) {
-	rd := db.GetDriver(storage)
-	if rd == nil {
-		return nil, fmt.Errorf("Storage driver not found")
-	}
-	dbc, err := rd.NewWithMap(map[string]interface{}{"url": dsn})
+func newDBDriver(dsn string) (driver, error) {
+	dbc, err := db.NewConnection(db.Config{DSN: dsn})
 	if err != nil {
 		return nil, err
 	}
 
 	drv := &dbDriver{
-		ciRepo:  dbc.NewClientIdentityRepo(),
-		cfgRepo: dbc.NewConnectorConfigRepo(),
-		usrRepo:dbc.NewUserRepo(),
+		ciRepo:  db.NewClientIdentityRepo(dbc),
+		cfgRepo: db.NewConnectorConfigRepo(dbc),
+		usrRepo: db.NewUserRepo(dbc),
 	}
-
 	return drv, nil
 }
 
 type dbDriver struct {
 	ciRepo  client.ClientIdentityRepo
-	cfgRepo connector.ConnectorConfigRepo
+	cfgRepo *db.ConnectorConfigRepo
 	usrRepo user.UserRepo
 }
 
 func (d *dbDriver) Valid(m *oidc.ClientMetadata) error {
-	if len(m.RedirectURLs) == 0 {
+	if len(m.RedirectURIs) == 0 {
 		return errors.New("zero redirect URLs")
 	}
 
@@ -52,10 +45,10 @@ func (d *dbDriver) NewClient(meta oidc.ClientMetadata, admin bool) (*oidc.Client
 	var clientID string
 	var err error
 
-	if (meta.RedirectURLs[0].Host != "") {
-		clientID, err = oidc.GenClientID(meta.RedirectURLs[0].Host)
-	}else if (meta.RedirectURLs[0].Scheme != "") {
-		clientID, err = oidc.GenClientID(meta.RedirectURLs[0].Scheme)
+	if meta.RedirectURIs[0].Host != "" {
+		clientID, err = oidc.GenClientID(meta.RedirectURIs[0].Host)
+	} else if meta.RedirectURIs[0].Scheme != "" {
+		clientID, err = oidc.GenClientID(meta.RedirectURIs[0].Scheme)
 	}
 	if err != nil {
 		return nil, err
@@ -72,7 +65,7 @@ func (d *dbDriver) NewClient(meta oidc.ClientMetadata, admin bool) (*oidc.Client
 	if admin {
 		d.ciRepo.SetDexAdmin(clientID, admin)
 	}
-	
+
 	return cc, nil
 }
 
