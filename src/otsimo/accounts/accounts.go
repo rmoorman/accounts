@@ -7,8 +7,6 @@ import (
 	"net/http"
 
 	"github.com/coreos/dex/pkg/log"
-	"github.com/coreos/go-oidc/jose"
-	"github.com/coreos/go-oidc/oidc"
 	"github.com/otsimo/api/apipb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -16,20 +14,16 @@ import (
 )
 
 type OtsimoAccounts struct {
-	Dex         pb.DexServiceClient
-	Api         apipb.ApiServiceClient
-	Oidc        *oidc.Client
-	Credentials oidc.ClientCredentials
-	roots       *x509.CertPool
+	Dex   pb.DexServiceClient
+	Api   apipb.ApiServiceClient
+	Oidc  *Client
+	roots *x509.CertPool
+	tm    *ClientCredsTokenManager
 }
 
 func (c *OtsimoAccounts) ConnectToServices(dexServiceUrl, apiServiceUrl string) {
-	jwt, err := c.Oidc.ClientCredsToken(oidc.DefaultScope)
-	if err != nil {
-		panic(err)
-	}
+	jwtCreds := NewOauthAccess(c.tm)
 
-	jwtCreds := NewOauthAccess(&jwt)
 	var opts []grpc.DialOption
 	if c.roots != nil {
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(c.roots, "")))
@@ -51,29 +45,29 @@ func (c *OtsimoAccounts) ConnectToServices(dexServiceUrl, apiServiceUrl string) 
 	c.Api = apipb.NewApiServiceClient(apiConn)
 }
 
-func NewOtsimoAccounts(client *oidc.Client, cc oidc.ClientCredentials, roots *x509.CertPool) *OtsimoAccounts {
+func NewOtsimoAccounts(client *Client, tm *ClientCredsTokenManager, roots *x509.CertPool) *OtsimoAccounts {
 	oa := &OtsimoAccounts{
 		Oidc:        client,
-		Credentials: cc,
 		roots:       roots,
+		tm:             tm,
 	}
 	return oa
 }
 
 // oauthAccess supplies credentials from a given token.
 type oauthAccess struct {
-	Token      jose.JWT
+	tm         *ClientCredsTokenManager
 	RequireTLS bool
 }
 
 // NewOauthAccess constructs the credentials using a given token.
-func NewOauthAccess(token *jose.JWT) oauthAccess {
-	return oauthAccess{Token: *token, RequireTLS: true}
+func NewOauthAccess(tm    *ClientCredsTokenManager) oauthAccess {
+	return oauthAccess{tm: tm, RequireTLS: true}
 }
 
 func (oa *oauthAccess) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
 	return map[string]string{
-		"Authorization": "Bearer" + " " + oa.Token.Encode(),
+		"Authorization": "Bearer" + " " + oa.tm.Token.Encode(),
 	}, nil
 }
 

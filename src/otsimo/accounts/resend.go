@@ -13,7 +13,7 @@ import (
 
 func handleResendFunc(o *OtsimoAccounts, issuerURL, resendURL, cbURL url.URL) http.HandlerFunc {
 	trans := &oidc.AuthenticatedTransport{
-		TokenRefresher: &oidc.ClientCredsTokenRefresher{
+		TokenRefresher: &ClientCredsTokenRefresher{
 			Issuer:     issuerURL.String(),
 			OIDCClient: o.Oidc,
 		},

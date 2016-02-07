@@ -19,12 +19,11 @@ import (
 	"github.com/codegangsta/negroni"
 	pflag "github.com/coreos/dex/pkg/flag"
 	"github.com/coreos/dex/pkg/log"
-	"github.com/coreos/go-oidc/oidc"
 )
 
 var (
-	version       = "DEV"
-	XRealIP       = "X-Real-IP"
+	version = "DEV"
+	XRealIP = "X-Real-IP"
 	XForwardedFor = "X-Forwarded-For"
 )
 
@@ -82,12 +81,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to parse host from --listen flag: %v", err)
 	}
-
-	cc := oidc.ClientCredentials{
-		ID:     *clientID,
-		Secret: *clientSecret,
-	}
-
 	var tlsConfig tls.Config
 	var roots *x509.CertPool
 	if *caFile != "" {
@@ -99,41 +92,12 @@ func main() {
 		roots.AppendCertsFromPEM(pemBlock)
 		tlsConfig.RootCAs = roots
 	}
-
-	httpClient := &http.Client{Transport: &http.Transport{TLSClientConfig: &tlsConfig}}
-
-	var cfg oidc.ProviderConfig
-	for {
-		cfg, err = oidc.FetchProviderConfig(httpClient, *discovery)
-		if err == nil {
-			break
-		}
-
-		sleep := 3 * time.Second
-		log.Errorf("Failed fetching provider config, trying again in %v: %v", sleep, err)
-		time.Sleep(sleep)
-	}
-
-	log.Infof("Fetched provider config from %s: %#v", *discovery, cfg)
-
-	ccfg := oidc.ClientConfig{
-		HTTPClient:     httpClient,
-		ProviderConfig: cfg,
-		Credentials:    cc,
-		RedirectURL:    *redirectURL,
-	}
-
-	client, err := oidc.NewClient(ccfg)
-	if err != nil {
-		log.Fatalf("Unable to create Client: %v", err)
-	}
-
-	client.SyncProviderConfig(*discovery)
+	client, tokenMan := NewClient(*clientID, *clientSecret, *discovery, *redirectURL, &tlsConfig)
 	redirectURLParsed, err := url.Parse(*redirectURL)
 	if err != nil {
 		log.Fatalf("Unable to parse url from --redirect-url flag: %v", err)
 	}
-	accounts := NewOtsimoAccounts(client, cc, roots)
+	accounts := NewOtsimoAccounts(client, tokenMan, roots)
 	accounts.ConnectToServices(*connectService, *apiService)
 
 	mux := NewClientHandler(accounts, *discovery, *redirectURLParsed)
@@ -220,7 +184,7 @@ func writeLog(req *http.Request, url url.URL, ts time.Time, status int, size int
 
 	uri := url.RequestURI()
 
-	buf := make([]byte, 0, 3*(len(host)+len(username)+len(req.Method)+len(uri)+len(req.Proto)+50)/2)
+	buf := make([]byte, 0, 3 * (len(host) + len(username) + len(req.Method) + len(uri) + len(req.Proto) + 50) / 2)
 	buf = append(buf, host...)
 	buf = append(buf, " - "...)
 	buf = append(buf, username...)
@@ -251,8 +215,8 @@ func appendQuoted(buf []byte, s string) []byte {
 		}
 		if width == 1 && r == utf8.RuneError {
 			buf = append(buf, `\x`...)
-			buf = append(buf, lowerhex[s[0]>>4])
-			buf = append(buf, lowerhex[s[0]&0xF])
+			buf = append(buf, lowerhex[s[0] >> 4])
+			buf = append(buf, lowerhex[s[0] & 0xF])
 			continue
 		}
 		if r == rune('"') || r == '\\' {
@@ -285,20 +249,20 @@ func appendQuoted(buf []byte, s string) []byte {
 			switch {
 			case r < ' ':
 				buf = append(buf, `\x`...)
-				buf = append(buf, lowerhex[s[0]>>4])
-				buf = append(buf, lowerhex[s[0]&0xF])
+				buf = append(buf, lowerhex[s[0] >> 4])
+				buf = append(buf, lowerhex[s[0] & 0xF])
 			case r > utf8.MaxRune:
 				r = 0xFFFD
 				fallthrough
 			case r < 0x10000:
 				buf = append(buf, `\u`...)
 				for s := 12; s >= 0; s -= 4 {
-					buf = append(buf, lowerhex[r>>uint(s)&0xF])
+					buf = append(buf, lowerhex[r >> uint(s) & 0xF])
 				}
 			default:
 				buf = append(buf, `\U`...)
 				for s := 28; s >= 0; s -= 4 {
-					buf = append(buf, lowerhex[r>>uint(s)&0xF])
+					buf = append(buf, lowerhex[r >> uint(s) & 0xF])
 				}
 			}
 		}

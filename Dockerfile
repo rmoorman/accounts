@@ -1,4 +1,4 @@
-FROM quay.io/brianredbeard/corebox
+FROM centurylink/ca-certs
 
 ADD bin/dex-worker-linux-amd64 /opt/dex/bin/dex-worker
 ADD bin/dex-overlord-linux-amd64 /opt/dex/bin/dex-overlord
