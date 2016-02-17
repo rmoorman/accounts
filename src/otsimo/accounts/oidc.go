@@ -8,21 +8,22 @@ import (
 	"sync"
 	"time"
 
+	"crypto/tls"
+
+	"github.com/coreos/dex/pkg/log"
 	phttp "github.com/coreos/go-oidc/http"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/coreos/go-oidc/key"
 	"github.com/coreos/go-oidc/oauth2"
 	"github.com/coreos/go-oidc/oidc"
-	"github.com/coreos/dex/pkg/log"
-	"crypto/tls"
-	"github.com/jonboulle/clockwork"
 	"github.com/coreos/pkg/timeutil"
+	"github.com/jonboulle/clockwork"
 )
 
 const (
-// amount of time that must pass after the last key sync
-// completes before another attempt may begin
-	keySyncWindow = 5 * time.Second
+	// amount of time that must pass after the last key sync
+	// completes before another attempt may begin
+	keySyncWindow               = 5 * time.Second
 	MaximumTokenRefreshInterval = 6 * time.Hour
 	MinimumTokenRefreshInterval = time.Minute
 )
@@ -64,13 +65,13 @@ func NewOIDCClient(cfg oidc.ClientConfig) (*Client, error) {
 }
 
 type Client struct {
-	httpClient      phttp.Client
-	providerConfig  *providerConfigRepo
-	credentials     oidc.ClientCredentials
-	redirectURL     string
-	scope           []string
-	keySet          key.PublicKeySet
-	providerSyncer  *oidc.ProviderConfigSyncer
+	httpClient     phttp.Client
+	providerConfig *providerConfigRepo
+	credentials    oidc.ClientCredentials
+	redirectURL    string
+	scope          []string
+	keySet         key.PublicKeySet
+	providerSyncer *oidc.ProviderConfigSyncer
 
 	keySetSyncMutex sync.RWMutex
 	lastKeySetSync  time.Time
@@ -257,7 +258,7 @@ func (c *Client) VerifyJWT(jwt jose.JWT) error {
 	return v.Verify(jwt)
 }
 
-func (c *Client)VerifyJWTForClientID(jwt jose.JWT, clientID string) error {
+func (c *Client) VerifyJWTForClientID(jwt jose.JWT, clientID string) error {
 	var keysFunc func() []key.PublicKey
 	if kID, ok := jwt.KeyID(); ok {
 		keysFunc = c.keysFuncWithID(kID)
@@ -377,7 +378,7 @@ func NewClient(clientID, clientSecret, discovery, redirectURL string, tlsConfig 
 		time.Sleep(sleep)
 	}
 
-	log.Infof("Fetched provider config from %s: %#v", discovery, cfg)
+	log.Infof("Fetched provider config from %s", discovery)
 
 	ccfg := oidc.ClientConfig{
 		HTTPClient:     httpClient,
@@ -402,16 +403,16 @@ func NewClient(clientID, clientSecret, discovery, redirectURL string, tlsConfig 
 
 func NewClientCredsTokenManager(client *Client, issuer string) *ClientCredsTokenManager {
 	return &ClientCredsTokenManager{
-		client:client,
-		issuer:issuer,
-		clock: clockwork.NewRealClock(),
+		client: client,
+		issuer: issuer,
+		clock:  clockwork.NewRealClock(),
 	}
 }
 
 type ClientCredsTokenManager struct {
-	client          *Client
-	issuer          string
-	Token           jose.JWT
+	client *Client
+	issuer string
+	Token  jose.JWT
 
 	clock           clockwork.Clock
 	initialSyncDone bool

@@ -47,9 +47,9 @@ func (c *OtsimoAccounts) ConnectToServices(dexServiceUrl, apiServiceUrl string) 
 
 func NewOtsimoAccounts(client *Client, tm *ClientCredsTokenManager, roots *x509.CertPool) *OtsimoAccounts {
 	oa := &OtsimoAccounts{
-		Oidc:        client,
-		roots:       roots,
-		tm:             tm,
+		Oidc:  client,
+		roots: roots,
+		tm:    tm,
 	}
 	return oa
 }
@@ -61,7 +61,7 @@ type oauthAccess struct {
 }
 
 // NewOauthAccess constructs the credentials using a given token.
-func NewOauthAccess(tm    *ClientCredsTokenManager) oauthAccess {
+func NewOauthAccess(tm *ClientCredsTokenManager) oauthAccess {
 	return oauthAccess{tm: tm, RequireTLS: true}
 }
 
